@@ -28,6 +28,14 @@ export interface TradeOptions {
   feeOnTransfer?: boolean
 }
 
+export interface TradeOptionsDeadline extends Omit<TradeOptions, 'ttl'> {
+  /**
+   * When the transaction expires.
+   * This is an atlernate to specifying the ttl, for when you do not want to use local time.
+   */
+  deadline: number
+}
+
 /**
  * The parameters to use in the call to the Uniswap V2 Router to execute a trade.
  */
@@ -65,7 +73,7 @@ export abstract class Router {
    * @param trade to produce call parameters for
    * @param options options for the call parameters
    */
-  public static swapCallParameters(trade: Trade, options: TradeOptions): SwapParameters {
+  public static swapCallParameters(trade: Trade, options: TradeOptions | TradeOptionsDeadline): SwapParameters {
     const etherIn = trade.inputAmount.currency === ETHER
     const etherOut = trade.outputAmount.currency === ETHER
     // the router does not support both ether in and out
@@ -76,7 +84,10 @@ export abstract class Router {
     const amountIn: string = toHex(trade.maximumAmountIn(options.allowedSlippage))
     const amountOut: string = toHex(trade.minimumAmountOut(options.allowedSlippage))
     const path: string[] = trade.route.path.map(token => token.address)
-    const deadline = `0x${(Math.floor(new Date().getTime() / 1000) + options.ttl).toString(16)}`
+    const deadline =
+      'ttl' in options
+        ? `0x${(Math.floor(new Date().getTime() / 1000) + options.ttl).toString(16)}`
+        : `0x${options.deadline.toString(16)}`
 
     const useFeeOnTransfer = Boolean(options.feeOnTransfer)
 
